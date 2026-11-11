@@ -10,7 +10,7 @@
 
 Name:           nodejs26
 Epoch:          1
-Version:        26.1.0
+Version:        26.8.2
 Release:        %{autorelease}
 
 Summary:        JavaScript runtime
@@ -34,45 +34,45 @@ URL:            https://nodejs.org
 # expect anything between the markers to be overwritten on any update.
 
 # BEGIN automatic-version-macros  # DO NOT REMOVE THIS LINE!
-# Version from node-v26.1.0/src/node_version.h
+# Version from node-v26.8.2/src/node_version.h
 %global node_soversion 147
 
-# Version from node-v26.1.0/deps/ada/ada.h
-%nodejs_define_version ada 3.4.4
-# Version from node-v26.1.0/deps/brotli/c/common/version.h
+# Version from node-v26.8.2/deps/ada/ada.h
+%nodejs_define_version ada 4.0.0
+# Version from node-v26.8.2/deps/brotli/c/common/version.h
 %nodejs_define_version brotli 1.2.0
-# Version from node-v26.1.0/deps/cares/include/ares_version.h
-%nodejs_define_version c_ares 1.34.6
-# Version from node-v26.1.0/deps/histogram/include/hdr/hdr_histogram_version.h
-%nodejs_define_version histogram 0.11.9
-# Version from node-v26.1.0/tools/icu/current_ver.dep
+# Version from node-v26.8.2/deps/cares/include/ares_version.h
+%nodejs_define_version c_ares 1.34.8
+# Version from node-v26.8.2/deps/histogram/include/hdr/hdr_histogram_version.h
+%nodejs_define_version histogram 0.11.10
+# Version from node-v26.8.2/tools/icu/current_ver.dep
 %nodejs_define_version icu 78.3 -p
-# Version from node-v26.1.0/deps/uv/include/uv/version.h
+# Version from node-v26.8.2/deps/uv/include/uv/version.h
 %nodejs_define_version libuv 1.52.1
-# Version from node-v26.1.0/deps/llhttp/include/llhttp.h
-%nodejs_define_version llhttp 9.4.1
-# Version from node-v26.1.0/deps/merve/merve.h
+# Version from node-v26.8.2/deps/llhttp/include/llhttp.h
+%nodejs_define_version llhttp 9.4.3
+# Version from node-v26.8.2/deps/merve/merve.h
 %nodejs_define_version merve 1.2.2
-# Version from node-v26.1.0/deps/nghttp2/lib/includes/nghttp2/nghttp2ver.h
-%nodejs_define_version nghttp2 1.69.0
-# Version from node-v26.1.0/deps/ngtcp2/nghttp3/lib/includes/nghttp3/version.h
-%nodejs_define_version nghttp3 1.15.0
-# Version from node-v26.1.0/deps/ngtcp2/ngtcp2/lib/includes/ngtcp2/version.h
-%nodejs_define_version ngtcp2 1.22.0
-# Version from node-v26.1.0/lib/punycode.js
+# Version from node-v26.8.2/deps/nghttp2/lib/includes/nghttp2/nghttp2ver.h
+%nodejs_define_version nghttp2 1.70.0
+# Version from node-v26.8.2/deps/ngtcp2/nghttp3/lib/includes/nghttp3/version.h
+%nodejs_define_version nghttp3 1.18.0
+# Version from node-v26.8.2/deps/ngtcp2/ngtcp2/lib/includes/ngtcp2/version.h
+%nodejs_define_version ngtcp2 1.25.0
+# Version from node-v26.8.2/lib/punycode.js
 %nodejs_define_version nodejs-punycode 2.1.0
-# Version from node-v26.1.0/deps/undici/src/package.json
-%nodejs_define_version nodejs-undici 8.2.0
-# Version from node-v26.1.0/deps/npm/package.json
-%nodejs_define_version npm 1:11.13.0-%{nodejs_subpackage_release}
-# Version from node-v26.1.0/deps/sqlite/sqlite3.h
-%nodejs_define_version sqlite 3.53.0
-# Version from node-v26.1.0/deps/uvwasi/include/uvwasi.h
+# Version from node-v26.8.2/deps/undici/src/package.json
+%nodejs_define_version nodejs-undici 8.10.2
+# Version from node-v26.8.2/deps/npm/package.json
+%nodejs_define_version npm 1:11.19.1-%{nodejs_subpackage_release}
+# Version from node-v26.8.2/deps/sqlite/sqlite3.h
+%nodejs_define_version sqlite 3.53.4
+# Version from node-v26.8.2/deps/uvwasi/include/uvwasi.h
 %nodejs_define_version uvwasi 0.0.23
-# Version from node-v26.1.0/deps/v8/include/v8-version.h
+# Version from node-v26.8.2/deps/v8/include/v8-version.h
 %nodejs_define_version v8 3:14.6.202.34-%{nodejs_subpackage_release} -p
-# Version from node-v26.1.0/deps/zlib/zlib.h
-%nodejs_define_version zlib 1.3.1
+# Version from node-v26.8.2/deps/zlib/zlib.h
+%nodejs_define_version zlib 1.3.2.1-motley
 # END automatic-version-macros  # DO NOT REMOVE THIS LINE!
 
 # === Conditional build – global options
@@ -100,7 +100,10 @@ ExclusiveArch:  %{nodejs_arches}
 # v8 does not build on i686 any more
 ExcludeArch:    %{ix86}
 
-# SPEC tools – additiona macros, dependency generators, and utilities
+# [NEW in nodejs26] Temporal support
+BuildRequires:  rust-toolset
+
+# SPEC tools – additional macros, dependency generators, and utilities
 BuildRequires:  chrpath
 BuildRequires:  git-core
 BuildRequires:  jq
@@ -277,6 +280,13 @@ readonly -a potential_python_scripts=(
 %py3_shebang_fix "${potential_python_scripts[@]}"
 
 %build
+
+# Generate cargo-vendor.txt for automatic bundled(crate()) Provides.
+pushd deps/crates
+%cargo_vendor_manifest
+popd
+mv deps/crates/cargo-vendor.txt .
+
 # clang doesn't add GCC lib dirs to linker search path,
 # so create the unversioned symlink that -latomic needs in a writable location
 mkdir -p %{_builddir}/.libatomic
@@ -551,6 +561,7 @@ npm config list --json | jq --exit-status '.["update-notifier"] == false'
 %files
 %doc        README.md CHANGELOG.md GOVERNANCE.md onboarding.md
 %license    LICENSE
+%license    cargo-vendor.txt
 %dir        %{nodejs_datadir}/
 %dir        %{nodejs_datadir}/man/
 %dir        %{nodejs_datadir}/man/man1/
@@ -615,6 +626,15 @@ npm config list --json | jq --exit-status '.["update-notifier"] == false'
 
 %changelog
 ## START: Generated by rpmautospec
+* Thu Sep 17 2026 Andrei Radchenko <aradchen@redhat.com> - 1:26.8.2-1
+- Update to version 26.8.2
+
+* Wed Sep 16 2026 Andrei Radchenko <aradchen@redhat.com> - 1:26.1.0-3
+- New tier0 test plan
+
+* Wed Sep 09 2026 Andrei Radchenko <aradchen@redhat.com> - 1:26.1.0-2
+- Enable rust
+
 * Wed Aug 19 2026 Andrei Radchenko <aradchen@redhat.com> - 1:26.1.0-1
 - Rebase to version 26.1.0 - use clang to build - new dependency - merve -
   disable LTO temporarily to fix linking issues with ICU/Abseil - unbundle
